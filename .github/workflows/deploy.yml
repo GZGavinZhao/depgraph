@@ -50,11 +50,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
-        run: pnpm run build --base /depgraph/
-
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v5
+
+      - name: Build
+        run: pnpm run build --base "${{ steps.pages.outputs.base_path }}/"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
