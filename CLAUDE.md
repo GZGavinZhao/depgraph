@@ -90,12 +90,12 @@ When nodes are selected or subgraph mode is active, the code updates `color`, `s
 
 1. Navigate to the autobuild directory:
    ```bash
-   cd /home/gavinzhao/CS/Solus/autobuild
+   cd autobuild
    ```
 
 2. Run the export-json command:
    ```bash
-   go run main.go export-json src:/home/gavinzhao/CS/Solus/packages2 ../depgraph/public/graph.json
+   go run main.go export-json src:/home/gavinzhao/CS/Solus/packages2 ../public/graph.json
    ```
 
 3. The generated JSON file contains:

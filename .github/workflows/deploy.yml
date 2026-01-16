@@ -24,9 +24,6 @@ jobs:
       - name: Clone packages repo (shallow)
         run: git clone --depth 1 https://github.com/getsolus/packages.git packages
 
-      - name: Clone autobuild repo
-        run: git clone https://github.com/GZGavinZhao/autobuild.git autobuild
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
