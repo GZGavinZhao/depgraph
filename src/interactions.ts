@@ -167,20 +167,28 @@ export function applySubgraphFilter(state: AppState, dom: DOMElements): void {
     return;
   }
 
-  state.isSubgraphMode = true;
-  state.highlightedNodes = new Set(packages);
+  // Expand to 1-hop neighborhood
+  const expandedNodes = new Set<string>(packages);
 
-  // Find edges within the subgraph
+  packages.forEach(pkg => {
+    state.graph!.outNeighbors(pkg).forEach(dep => expandedNodes.add(dep));   // dependencies
+    state.graph!.inNeighbors(pkg).forEach(rdep => expandedNodes.add(rdep));  // dependents
+  });
+
+  state.isSubgraphMode = true;
+  state.highlightedNodes = expandedNodes;
+
+  // Find ALL edges connecting any expanded nodes
   const subgraphEdges = new Set<string>();
   state.graph.forEachEdge((edge, attrs, source, target) => {
-    if (state.highlightedNodes.has(source) && state.highlightedNodes.has(target)) {
+    if (expandedNodes.has(source) && expandedNodes.has(target)) {
       subgraphEdges.add(edge);
     }
   });
 
   // Update visuals
   state.graph.forEachNode((node, attrs) => {
-    if (state.highlightedNodes.has(node)) {
+    if (expandedNodes.has(node)) {
       state.graph!.setNodeAttribute(node, 'color', COLORS.nodeHighlight);
       state.graph!.setNodeAttribute(node, 'hidden', false);
     } else {
@@ -201,8 +209,9 @@ export function applySubgraphFilter(state: AppState, dom: DOMElements): void {
 
   state.sigma.refresh();
 
-  // Update UI
+  // Update UI with clearer messaging
   showModeBadge(dom, packages.length, subgraphEdges.size);
+  dom.modeText.textContent = `Subgraph: ${packages.length} packages + neighbors → ${expandedNodes.size} total, ${subgraphEdges.size} edges`;
   highlightPackagesInList(dom, state.highlightedNodes);
 }
 
