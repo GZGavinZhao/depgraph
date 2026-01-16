@@ -20,7 +20,7 @@ export const COLORS: ColorPalette = {
  */
 export async function loadGraphData(): Promise<GraphData> {
   try {
-    const response = await fetch('/graph.json');
+    const response = await fetch(`${import.meta.env.BASE_URL}graph.json`);
     if (!response.ok) {
       throw new Error(`Failed to load graph data: ${response.statusText}`);
     }
