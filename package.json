@@ -1,0 +1,24 @@
+{
+  "name": "depgraph",
+  "version": "1.0.0",
+  "description": "Package Dependency Graph Visualizer",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["dependency", "graph", "visualizer", "sigma", "graphology"],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.0",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "graphology": "^0.26.0",
+    "sigma": "^3.0.2"
+  }
+}
