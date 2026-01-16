@@ -40,11 +40,28 @@ export async function loadGraphData(): Promise<GraphData> {
   const names = ['utils', 'core', 'tools', 'common', 'extra', 'data', 'net',
                  'web', 'crypto', 'db', 'gui', 'cli', 'api', 'sdk', 'auth'];
 
+  const existingIds = new Set(nodes.map(n => n.id));
+
   for (let i = nodes.length; i < count; i++) {
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const name = names[Math.floor(Math.random() * names.length)];
-    const suffix = Math.random() > 0.5 ? Math.floor(Math.random() * 99) : '';
-    nodes.push({ id: `${prefix}${name}${suffix}` });
+    let id: string;
+    let attempts = 0;
+
+    // Generate unique ID
+    do {
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const name = names[Math.floor(Math.random() * names.length)];
+      const suffix = Math.random() > 0.5 ? Math.floor(Math.random() * 99) : '';
+      id = `${prefix}${name}${suffix}`;
+      attempts++;
+
+      // Fallback: append index if we've tried too many times
+      if (attempts > 100) {
+        id = `pkg-${i}`;
+      }
+    } while (existingIds.has(id));
+
+    existingIds.add(id);
+    nodes.push({ id });
   }
 
   // Generate dependency edges
