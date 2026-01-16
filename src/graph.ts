@@ -1,4 +1,6 @@
 import Graph from 'graphology';
+import forceAtlas2 from 'graphology-layout-forceatlas2';
+import noverlap from 'graphology-layout-noverlap';
 import type { GraphData, NodeAttributes, EdgeAttributes, ColorPalette } from './types';
 
 export const COLORS: ColorPalette = {
@@ -77,81 +79,37 @@ export function createGraph(data: GraphData): Graph<NodeAttributes, EdgeAttribut
 }
 
 /**
- * Run force-directed layout algorithm
+ * Run ForceAtlas2 layout algorithm optimized for large graphs
  */
 export async function runForceLayout(
   graph: Graph<NodeAttributes, EdgeAttributes>
 ): Promise<void> {
-  const nodes = graph.nodes();
-  const iterations = 100;
-  const repulsion = 800;
-  const attraction = 0.01;
-  const damping = 0.9;
-
-  // Initialize velocities
-  const vel: Record<string, { x: number; y: number }> = {};
-  nodes.forEach(n => vel[n] = { x: 0, y: 0 });
-
-  for (let iter = 0; iter < iterations; iter++) {
-    // Get current positions
-    const positions: Record<string, { x: number; y: number }> = {};
-    nodes.forEach(n => {
-      positions[n] = {
-        x: graph.getNodeAttribute(n, 'x'),
-        y: graph.getNodeAttribute(n, 'y')
-      };
-    });
-
-    // Calculate repulsion forces
-    nodes.forEach(n1 => {
-      let fx = 0, fy = 0;
-
-      // Sample a subset of nodes for repulsion (performance optimization)
-      const sampleSize = Math.min(50, nodes.length);
-      const sample = nodes.length <= sampleSize ? nodes :
-        nodes.filter(() => Math.random() < sampleSize / nodes.length);
-
-      sample.forEach(n2 => {
-        if (n1 === n2) return;
-        const pos1 = positions[n1]!;
-        const pos2 = positions[n2]!;
-        const dx = pos1.x - pos2.x;
-        const dy = pos1.y - pos2.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const force = repulsion / (dist * dist);
-        fx += (dx / dist) * force;
-        fy += (dy / dist) * force;
-      });
-
-      vel[n1]!.x = (vel[n1]!.x + fx) * damping;
-      vel[n1]!.y = (vel[n1]!.y + fy) * damping;
-    });
-
-    // Calculate attraction forces along edges
-    graph.forEachEdge((edge, attrs, source, target) => {
-      const posSource = positions[source]!;
-      const posTarget = positions[target]!;
-      const dx = posTarget.x - posSource.x;
-      const dy = posTarget.y - posSource.y;
-      const force = attraction;
-
-      vel[source]!.x += dx * force;
-      vel[source]!.y += dy * force;
-      vel[target]!.x -= dx * force;
-      vel[target]!.y -= dy * force;
-    });
-
-    // Apply velocities
-    nodes.forEach(n => {
-      const pos = positions[n]!;
-      const v = vel[n]!;
-      graph.setNodeAttribute(n, 'x', pos.x + v.x);
-      graph.setNodeAttribute(n, 'y', pos.y + v.y);
-    });
-
-    // Yield every 10 iterations to keep UI responsive
-    if (iter % 10 === 0) {
-      await new Promise(r => setTimeout(r, 0));
+  // Run ForceAtlas2 for better initial layout
+  const settings = {
+    iterations: 500,
+    settings: {
+      barnesHutOptimize: true,      // Use Barnes-Hut for O(n log n) performance
+      strongGravityMode: false,
+      gravity: 0.05,                 // Pull nodes toward center slightly
+      scalingRatio: 10,              // Increase space between nodes
+      edgeWeightInfluence: 1,        // Consider edge weights
+      slowDown: 5,                   // Stabilize faster
+      adjustSizes: true,             // Account for node sizes
+      linLogMode: false              // Linear attraction, logarithmic repulsion
     }
-  }
+  };
+
+  forceAtlas2.assign(graph, settings);
+
+  // Apply noverlap to prevent node overlaps
+  noverlap.assign(graph, {
+    maxIterations: 100,
+    settings: {
+      ratio: 1.5,                    // How much space between nodes
+      margin: 5,                     // Minimum margin
+      expansion: 1.2,                // Grid cell expansion
+      gridSize: 20,                  // Spatial grid optimization
+      speed: 3                       // Adjustment speed
+    }
+  });
 }

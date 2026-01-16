@@ -32,7 +32,7 @@ async function initGraph(): Promise<void> {
     state.graph = createGraph(data);
 
     // Run force-directed layout
-    showLoading(dom, true, 'Computing layout...');
+    showLoading(dom, true, 'Computing layout (this may take 10-20 seconds)...');
     await runForceLayout(state.graph);
 
     // Initialize Sigma renderer

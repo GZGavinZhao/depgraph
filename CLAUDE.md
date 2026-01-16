@@ -29,7 +29,7 @@ The codebase follows a functional, state-based architecture with clear separatio
 
 - **types.ts**: Central type definitions for the entire application. Defines `AppState` (the single source of truth for app state), `GraphData`, `NodeAttributes`, `EdgeAttributes`, and `DOMElements`.
 
-- **graph.ts**: Graph creation and layout logic. Contains `loadGraphData()` (currently mock generator), `createGraph()` (builds Graphology instance), and `runForceLayout()` (force-directed layout algorithm).
+- **graph.ts**: Graph creation and layout logic. Contains `loadGraphData()` (loads from /public/graph.json), `createGraph()` (builds Graphology instance), and `runForceLayout()` (ForceAtlas2 layout algorithm optimized for large graphs).
 
 - **ui.ts**: Pure UI functions that don't manage state. Functions take `dom` and data as parameters, return nothing or update DOM. Includes `getDOMElements()`, `showLoading()`, `updateStats()`, `renderPackageList()`, etc.
 
@@ -50,9 +50,27 @@ The application uses a single mutable `AppState` object defined in `main.ts`. St
 
 1. **Loading**: `loadGraphData()` returns `GraphData` (nodes array + edges array)
 2. **Creation**: `createGraph()` converts to Graphology instance with positioned nodes
-3. **Layout**: `runForceLayout()` applies force-directed algorithm to optimize positions
+3. **Layout**: `runForceLayout()` applies ForceAtlas2 algorithm optimized for large graphs (4,765+ nodes)
+   - Uses Barnes-Hut optimization for O(n log n) performance
+   - Followed by Noverlap post-processing to prevent node overlaps
+   - Takes 10-20 seconds for full Solus repository
 4. **Rendering**: Sigma.js renders the Graphology graph using WebGL
 5. **Updates**: State mutations trigger attribute updates on graph/edges, then `sigma.refresh()`
+
+### Layout Algorithm Tuning
+
+The ForceAtlas2 algorithm can be tuned in `src/graph.ts` runForceLayout():
+
+**ForceAtlas2 settings:**
+- `gravity` (0.05): Higher = more compact, lower = more spread out
+- `scalingRatio` (10): Higher = more space between nodes
+- `iterations` (500): More iterations = better layout but slower
+- `barnesHutOptimize` (true): Essential for performance with large graphs
+
+**Noverlap settings:**
+- `ratio` (1.5): How much to expand nodes to prevent overlap
+- `margin` (5): Minimum pixel margin between nodes
+- `maxIterations` (100): More iterations = better separation
 
 ### Visual State System
 
