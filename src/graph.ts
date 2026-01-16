@@ -13,73 +13,22 @@ export const COLORS: ColorPalette = {
 };
 
 /**
- * Load graph data
- * Currently returns mock data; can be replaced with API call or file loading
+ * Load graph data from generated JSON file
+ * To regenerate: cd /path/to/autobuild && go run main.go export-json src:/path/to/packages2 ../depgraph/public/graph.json
  */
 export async function loadGraphData(): Promise<GraphData> {
-  // --- SAMPLE DATA GENERATOR ---
-  // Replace this with: return await fetch('/api/graph').then(r => r.json());
-
-  const count = 800; // Adjust for testing; your real data has ~5000
-  const nodes: GraphData['nodes'] = [];
-  const edges: GraphData['edges'] = [];
-
-  // Base/core packages that many things depend on
-  const basePackages = [
-    'glibc', 'gcc', 'binutils', 'coreutils', 'bash', 'perl', 'python',
-    'openssl', 'zlib', 'ncurses', 'readline', 'sqlite', 'libxml2',
-    'curl', 'git', 'cmake', 'make', 'autoconf', 'automake', 'libtool',
-    'pkg-config', 'gettext', 'glib', 'dbus', 'systemd', 'util-linux',
-    'shadow', 'pam', 'acl', 'attr', 'libcap', 'audit', 'selinux'
-  ];
-
-  basePackages.forEach(id => nodes.push({ id, isBase: true }));
-
-  // Generate additional packages
-  const prefixes = ['lib', 'python-', 'perl-', 'go-', 'rust-', 'node-', ''];
-  const names = ['utils', 'core', 'tools', 'common', 'extra', 'data', 'net',
-                 'web', 'crypto', 'db', 'gui', 'cli', 'api', 'sdk', 'auth'];
-
-  const existingIds = new Set(nodes.map(n => n.id));
-
-  for (let i = nodes.length; i < count; i++) {
-    let id: string;
-    let attempts = 0;
-
-    // Generate unique ID
-    do {
-      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-      const name = names[Math.floor(Math.random() * names.length)];
-      const suffix = Math.random() > 0.5 ? Math.floor(Math.random() * 99) : '';
-      id = `${prefix}${name}${suffix}`;
-      attempts++;
-
-      // Fallback: append index if we've tried too many times
-      if (attempts > 100) {
-        id = `pkg-${i}`;
-      }
-    } while (existingIds.has(id));
-
-    existingIds.add(id);
-    nodes.push({ id });
-  }
-
-  // Generate dependency edges
-  nodes.forEach((pkg, idx) => {
-    if (idx < 5) return; // Skip first few base packages
-    const depCount = Math.floor(Math.random() * 4) + 1;
-    const candidates = nodes.slice(0, idx);
-
-    // Shuffle and pick dependencies, favoring base packages
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < Math.min(depCount, shuffled.length); i++) {
-      if (Math.random() > 0.3 || shuffled[i]?.isBase) {
-        edges.push({ source: pkg.id, target: shuffled[i]!.id });
-      }
+  try {
+    const response = await fetch('/graph.json');
+    if (!response.ok) {
+      throw new Error(`Failed to load graph data: ${response.statusText}`);
     }
-  });
-
-  return { nodes, edges };
+    return await response.json();
+  } catch (err) {
+    console.error('Error loading graph data:', err);
+    console.warn('Falling back to empty graph. Run autobuild export-json to generate graph.json');
+    // Return empty graph as fallback
+    return { nodes: [], edges: [] };
+  }
 }
 
 /**
@@ -111,8 +60,9 @@ export function createGraph(data: GraphData): Graph<NodeAttributes, EdgeAttribut
   // Add edges
   data.edges.forEach((edge, i) => {
     if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
-      const edgeId = `e${i}`;
-      if (!graph.hasEdge(edgeId)) {
+      // Skip if edge between these nodes already exists (duplicate dependencies)
+      if (!graph.hasEdge(edge.source, edge.target)) {
+        const edgeId = `e${i}`;
         graph.addEdge(edge.source, edge.target, {
           id: edgeId,
           color: COLORS.edgeDefault,

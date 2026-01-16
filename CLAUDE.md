@@ -66,10 +66,29 @@ When nodes are selected or subgraph mode is active, the code updates `color`, `s
 
 ### Data Loading
 
-`loadGraphData()` in `graph.ts` currently generates mock data. To integrate real data:
-- Replace the function body with: `return await fetch('/api/graph').then(r => r.json())`
-- Ensure the API returns `{ nodes: [{ id: string, isBase?: boolean }], edges: [{ source: string, target: string }] }`
-- Edge direction: `source` depends on `target`
+`loadGraphData()` in `graph.ts` loads dependency graph data from `/public/graph.json`. This file is generated from the actual Solus package repository using the autobuild tool.
+
+**To regenerate graph.json:**
+
+1. Navigate to the autobuild directory:
+   ```bash
+   cd /home/gavinzhao/CS/Solus/autobuild
+   ```
+
+2. Run the export-json command:
+   ```bash
+   go run main.go export-json src:/home/gavinzhao/CS/Solus/packages2 ../depgraph/public/graph.json
+   ```
+
+3. The generated JSON file contains:
+   - `nodes`: Array of packages with `{ id: string, isBase?: boolean }`
+   - `edges`: Array of dependencies with `{ source: string, target: string }`
+   - Edge direction: `source` depends on `target`
+   - Base packages (system.base, system.devel components) are marked with `isBase: true`
+
+4. Restart the dev server if it's already running to pick up the new data
+
+**Note:** The graph.json file should be regenerated whenever the package repository changes to keep the visualization up to date with actual dependencies.
 
 ## TypeScript Configuration
 
