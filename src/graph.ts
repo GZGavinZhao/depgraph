@@ -69,7 +69,8 @@ export function createGraph(data: GraphData): Graph<NodeAttributes, EdgeAttribut
           id: edgeId,
           color: COLORS.edgeDefault,
           size: 0.5,
-          originalColor: COLORS.edgeDefault
+          originalColor: COLORS.edgeDefault,
+          type: 'arrow'
         });
       }
     }

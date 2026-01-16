@@ -1,4 +1,5 @@
 import Sigma from 'sigma';
+import { EdgeArrowProgram } from 'sigma/rendering';
 import { loadGraphData, createGraph, runForceLayout } from './graph';
 import { getDOMElements, showLoading, updateStats, renderPackageList } from './ui';
 import { setupInteractions, selectNode, focusOnNode } from './interactions';
@@ -45,6 +46,10 @@ async function initGraph(): Promise<void> {
       labelFont: 'IBM Plex Mono, monospace',
       labelSize: 11,
       labelColor: { color: '#9aa5b1' },
+      defaultEdgeType: 'arrow',
+      edgeProgramClasses: {
+        arrow: EdgeArrowProgram
+      },
       edgeReducer: (edge, data) => ({
         ...data,
         hidden: data.hidden || false
