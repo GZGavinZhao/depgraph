@@ -29,6 +29,44 @@ export interface EdgeAttributes {
   hidden?: boolean;
 }
 
+// Cycle data structures
+export interface CycleEdge {
+  from: string;
+  to: string;
+}
+
+export interface Cycle {
+  id: string;
+  nodes: string[];
+  edges: CycleEdge[];
+  color: string;
+}
+
+export interface CycleScenario {
+  id: string;
+  queriedPackages: string[];
+  cycles: Cycle[];
+  intermediateNodes: string[];
+}
+
+export interface CyclesData {
+  scenarios: CycleScenario[];
+}
+
+// Particle animation structures
+export interface Particle {
+  cycleId: string;
+  edgeIndex: number;
+  progress: number;
+  color: string;
+}
+
+export interface ParticleSystem {
+  particles: Particle[];
+  lastFrame: number;
+  animationId: number | null;
+}
+
 // Application state
 export interface AppState {
   graph: Graph<NodeAttributes, EdgeAttributes> | null;
@@ -37,6 +75,11 @@ export interface AppState {
   highlightedNodes: Set<string>;
   selectedNode: string | null;
   isSubgraphMode: boolean;
+  isCyclesMode: boolean;
+  currentCycleScenario: CycleScenario | null;
+  visibleCycles: Set<string>;
+  particleSystem: ParticleSystem | null;
+  particleCanvas: HTMLCanvasElement | null;
 }
 
 // Color palette
@@ -45,10 +88,13 @@ export interface ColorPalette {
   nodeHighlight: string;
   nodePath: string;
   nodeDimmed: string;
+  nodeQueried: string;
+  nodeIntermediate: string;
   edgeDefault: string;
   edgeHighlight: string;
   edgePath: string;
   edgeDimmed: string;
+  cyclePalette: string[];
 }
 
 // DOM element IDs for type safety
@@ -76,4 +122,12 @@ export interface DOMElements {
   zoomOut: HTMLButtonElement;
   zoomFit: HTMLButtonElement;
   zoomReset: HTMLButtonElement;
+  tabSubgraph: HTMLButtonElement;
+  tabCycles: HTMLButtonElement;
+  subgraphPanel: HTMLElement;
+  cyclesPanel: HTMLElement;
+  cyclesInput: HTMLTextAreaElement;
+  btnDetectCycles: HTMLButtonElement;
+  btnClearCycles: HTMLButtonElement;
+  cyclesList: HTMLElement;
 }

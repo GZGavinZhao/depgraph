@@ -49,14 +49,34 @@
             </section>
 
             <section class="section">
-                <div class="section-title">Subgraph Filter</div>
-                <textarea class="filter-textarea" id="filter-input" placeholder="Enter package names, one per line&#10;&#10;Example:&#10;glibc&#10;gcc&#10;binutils"></textarea>
-                <div class="filter-hint">
-                    Enter packages to highlight their dependency subgraph. Only edges connecting these packages will be shown.
+                <div class="filter-tabs">
+                    <button class="filter-tab active" id="tab-subgraph">Subgraph</button>
+                    <button class="filter-tab" id="tab-cycles">Cycles</button>
                 </div>
-                <div class="btn-row">
-                    <button class="btn btn-primary" id="btn-apply">Apply</button>
-                    <button class="btn btn-ghost" id="btn-clear">Clear</button>
+
+                <div class="filter-panel active" id="subgraph-panel">
+                    <div class="section-title">Subgraph Filter</div>
+                    <textarea class="filter-textarea" id="filter-input" placeholder="Enter package names, one per line&#10;&#10;Example:&#10;glibc&#10;gcc&#10;binutils"></textarea>
+                    <div class="filter-hint">
+                        Enter packages to highlight their dependency subgraph. Only edges connecting these packages will be shown.
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" id="btn-apply">Apply</button>
+                        <button class="btn btn-ghost" id="btn-clear">Clear</button>
+                    </div>
+                </div>
+
+                <div class="filter-panel" id="cycles-panel">
+                    <div class="section-title">Cycle Detection</div>
+                    <textarea class="filter-textarea" id="cycles-input" placeholder="Enter package names, one per line&#10;&#10;Example:&#10;glibc&#10;gcc&#10;binutils"></textarea>
+                    <div class="filter-hint">
+                        Enter packages to detect circular dependencies. The graph will show queried packages in blue and detected cycles in color.
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" id="btn-detect-cycles">Detect Cycles</button>
+                        <button class="btn btn-ghost" id="btn-clear-cycles">Clear</button>
+                    </div>
+                    <div class="cycles-list" id="cycles-list"></div>
                 </div>
             </section>
 

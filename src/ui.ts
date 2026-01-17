@@ -1,5 +1,5 @@
 import type Graph from 'graphology';
-import type { NodeAttributes, EdgeAttributes, DOMElements } from './types';
+import type { NodeAttributes, EdgeAttributes, DOMElements, Cycle } from './types';
 
 /**
  * Get DOM element by ID with type safety
@@ -39,7 +39,15 @@ export function getDOMElements(): DOMElements {
     zoomIn: getElement<HTMLButtonElement>('zoom-in'),
     zoomOut: getElement<HTMLButtonElement>('zoom-out'),
     zoomFit: getElement<HTMLButtonElement>('zoom-fit'),
-    zoomReset: getElement<HTMLButtonElement>('zoom-reset')
+    zoomReset: getElement<HTMLButtonElement>('zoom-reset'),
+    tabSubgraph: getElement<HTMLButtonElement>('tab-subgraph'),
+    tabCycles: getElement<HTMLButtonElement>('tab-cycles'),
+    subgraphPanel: getElement('subgraph-panel'),
+    cyclesPanel: getElement('cycles-panel'),
+    cyclesInput: getElement<HTMLTextAreaElement>('cycles-input'),
+    btnDetectCycles: getElement<HTMLButtonElement>('btn-detect-cycles'),
+    btnClearCycles: getElement<HTMLButtonElement>('btn-clear-cycles'),
+    cyclesList: getElement('cycles-list')
   };
 }
 
@@ -167,4 +175,85 @@ export function showModeBadge(
  */
 export function hideModeBadge(dom: DOMElements): void {
   dom.modeBadge.classList.remove('visible');
+}
+
+/**
+ * Initialize tab switching functionality
+ */
+export function initializeTabs(dom: DOMElements): void {
+  dom.tabSubgraph.onclick = () => {
+    // Switch tabs
+    dom.tabSubgraph.classList.add('active');
+    dom.tabCycles.classList.remove('active');
+
+    // Switch panels
+    dom.subgraphPanel.classList.add('active');
+    dom.cyclesPanel.classList.remove('active');
+  };
+
+  dom.tabCycles.onclick = () => {
+    // Switch tabs
+    dom.tabCycles.classList.add('active');
+    dom.tabSubgraph.classList.remove('active');
+
+    // Switch panels
+    dom.cyclesPanel.classList.add('active');
+    dom.subgraphPanel.classList.remove('active');
+  };
+}
+
+/**
+ * Render cycles list with toggle buttons
+ */
+export function renderCyclesList(
+  dom: DOMElements,
+  cycles: Cycle[],
+  visibleCycles: Set<string>,
+  onToggleCycle: (id: string) => void
+): void {
+  if (cycles.length === 0) {
+    dom.cyclesList.innerHTML = '';
+    return;
+  }
+
+  const html = cycles.map(cycle => {
+    const isVisible = visibleCycles.has(cycle.id);
+    const nodeCount = cycle.nodes.length;
+    const edgeCount = cycle.edges.length;
+
+    return `<div class="cycle-item">
+      <div class="cycle-item-left">
+        <div class="cycle-color-badge" style="background: ${cycle.color}"></div>
+        <div class="cycle-item-text">
+          <div class="cycle-item-title">${cycle.id}</div>
+          <div>${nodeCount} nodes, ${edgeCount} edges</div>
+        </div>
+      </div>
+      <button class="cycle-toggle-btn ${isVisible ? '' : 'hidden'}" data-cycle-id="${cycle.id}">
+        ${isVisible ? 'Hide' : 'Show'}
+      </button>
+    </div>`;
+  }).join('');
+
+  dom.cyclesList.innerHTML = html;
+
+  // Attach click handlers
+  dom.cyclesList.querySelectorAll<HTMLButtonElement>('.cycle-toggle-btn').forEach(btn => {
+    btn.onclick = () => {
+      const cycleId = btn.dataset.cycleId;
+      if (cycleId) onToggleCycle(cycleId);
+    };
+  });
+}
+
+/**
+ * Show cycles mode badge
+ */
+export function showCyclesModeBadge(
+  dom: DOMElements,
+  queriedCount: number,
+  cycleCount: number
+): void {
+  dom.modeBadge.classList.add('visible');
+  dom.modeText.textContent = `Cycles: ${queriedCount} queried packages, ${cycleCount} cycles detected`;
 }

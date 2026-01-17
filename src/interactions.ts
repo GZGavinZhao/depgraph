@@ -2,7 +2,9 @@ import type Sigma from 'sigma';
 import type Graph from 'graphology';
 import type { NodeAttributes, EdgeAttributes, AppState, DOMElements } from './types';
 import { COLORS } from './graph';
-import { showInfoPanel, hideInfoPanel, highlightPackagesInList, showModeBadge, hideModeBadge } from './ui';
+import { showInfoPanel, hideInfoPanel, highlightPackagesInList, showModeBadge, hideModeBadge, renderCyclesList, showCyclesModeBadge, initializeTabs } from './ui';
+import { loadCyclesMockData, findMatchingScenario, validateScenario, classifyNodes } from './cycles';
+import { setupParticleCanvas, initializeParticleSystem, startParticleAnimation, stopParticleAnimation } from './particles';
 
 /**
  * Select a node and highlight its dependencies
@@ -152,6 +154,11 @@ export function handleSearch(
 export function applySubgraphFilter(state: AppState, dom: DOMElements): void {
   if (!state.graph || !state.sigma) return;
 
+  // Clear cycles mode if active
+  if (state.isCyclesMode) {
+    clearCyclesMode(state, dom);
+  }
+
   const text = dom.filterInput.value.trim();
   if (!text) {
     clearSubgraphMode(state, dom);
@@ -242,6 +249,233 @@ export function clearSubgraphMode(state: AppState, dom: DOMElements): void {
 }
 
 /**
+ * Detect cycles using mock data
+ */
+export async function detectCycles(state: AppState, dom: DOMElements): Promise<void> {
+  if (!state.graph || !state.sigma) return;
+
+  // Clear subgraph mode if active
+  if (state.isSubgraphMode) {
+    clearSubgraphMode(state, dom);
+  }
+
+  // Parse queried packages from textarea
+  const text = dom.cyclesInput.value.trim();
+  if (!text) {
+    alert('Please enter package names to detect cycles.');
+    return;
+  }
+
+  const queriedPackages = text.split('\n')
+    .map(s => s.trim())
+    .filter(s => s);
+
+  if (queriedPackages.length === 0) {
+    alert('No valid packages entered.');
+    return;
+  }
+
+  // Load mock data
+  const cyclesData = await loadCyclesMockData();
+
+  // Find matching scenario
+  const scenario = findMatchingScenario(cyclesData, queriedPackages);
+  if (!scenario) {
+    alert(`No matching cycle scenario found for: ${queriedPackages.join(', ')}\n\nAvailable test scenarios:\n- glibc, gcc, binutils\n- python3, perl, ruby, nodejs\n- systemd, dbus, udev, polkit\n- mesa, llvm`);
+    return;
+  }
+
+  // Validate scenario against actual graph
+  const validation = validateScenario(scenario, new Set(state.allPackages));
+  if (!validation.valid) {
+    alert(`Scenario validation failed. Missing packages: ${validation.missing.join(', ')}`);
+    return;
+  }
+
+  // Set cycles mode
+  state.isCyclesMode = true;
+  state.currentCycleScenario = scenario;
+  state.visibleCycles = new Set(scenario.cycles.map(c => c.id));
+
+  // Apply visualization
+  applyCycleVisualization(state, dom);
+
+  // Render cycles list
+  renderCyclesList(dom, scenario.cycles, state.visibleCycles, (cycleId) => {
+    toggleCycleVisibility(state, dom, cycleId);
+  });
+
+  // Show mode badge
+  showCyclesModeBadge(dom, scenario.queriedPackages.length, scenario.cycles.length);
+
+  // Initialize and start particle animation
+  if (!state.particleCanvas) {
+    state.particleCanvas = setupParticleCanvas(dom.sigmaContainer);
+  }
+  state.particleCanvas.style.display = 'block';
+  state.particleSystem = initializeParticleSystem(scenario, state.visibleCycles);
+  startParticleAnimation(state, dom);
+}
+
+/**
+ * Apply cycle visualization to graph
+ */
+export function applyCycleVisualization(state: AppState, dom: DOMElements): void {
+  if (!state.graph || !state.sigma || !state.currentCycleScenario) return;
+
+  const scenario = state.currentCycleScenario;
+  const { queried, intermediate, cycleMembers } = classifyNodes(scenario);
+
+  // Build a map of cycle members to their colors
+  const cycleMemberColors = new Map<string, string>();
+  for (const cycle of scenario.cycles) {
+    if (!state.visibleCycles.has(cycle.id)) continue;
+
+    for (const node of cycle.nodes) {
+      // First cycle's color wins for overlapping nodes
+      if (!cycleMemberColors.has(node)) {
+        cycleMemberColors.set(node, cycle.color);
+      }
+    }
+  }
+
+  // Build set of visible cycle edges
+  const visibleCycleEdges = new Set<string>();
+  for (const cycle of scenario.cycles) {
+    if (!state.visibleCycles.has(cycle.id)) continue;
+
+    for (const edge of cycle.edges) {
+      // Create edge key (both directions since graph might be directed)
+      visibleCycleEdges.add(`${edge.from}->${edge.to}`);
+    }
+  }
+
+  // Color nodes
+  state.graph.forEachNode((node, attrs) => {
+    if (cycleMemberColors.has(node)) {
+      // Cycle member
+      state.graph!.setNodeAttribute(node, 'color', cycleMemberColors.get(node)!);
+      state.graph!.setNodeAttribute(node, 'size', attrs.originalSize * 1.3);
+      state.graph!.setNodeAttribute(node, 'hidden', false);
+    } else if (queried.has(node)) {
+      // Queried package (not in cycle)
+      state.graph!.setNodeAttribute(node, 'color', COLORS.nodeQueried);
+      state.graph!.setNodeAttribute(node, 'size', attrs.originalSize * 1.2);
+      state.graph!.setNodeAttribute(node, 'hidden', false);
+    } else if (intermediate.has(node)) {
+      // Intermediate node
+      state.graph!.setNodeAttribute(node, 'color', COLORS.nodeIntermediate);
+      state.graph!.setNodeAttribute(node, 'size', attrs.originalSize * 1.1);
+      state.graph!.setNodeAttribute(node, 'hidden', false);
+    } else {
+      // Hide everything else
+      state.graph!.setNodeAttribute(node, 'color', COLORS.nodeDimmed);
+      state.graph!.setNodeAttribute(node, 'hidden', true);
+    }
+  });
+
+  // Color edges
+  state.graph.forEachEdge((edge, attrs, source, target) => {
+    const edgeKey = `${source}->${target}`;
+
+    if (visibleCycleEdges.has(edgeKey)) {
+      // Get the cycle color for this edge
+      let edgeColor = COLORS.edgeHighlight;
+      for (const cycle of scenario.cycles) {
+        if (!state.visibleCycles.has(cycle.id)) continue;
+
+        const matchingEdge = cycle.edges.find(e => e.from === source && e.to === target);
+        if (matchingEdge) {
+          edgeColor = cycle.color;
+          break;
+        }
+      }
+
+      state.graph!.setEdgeAttribute(edge, 'color', edgeColor);
+      state.graph!.setEdgeAttribute(edge, 'size', 1.5);
+      state.graph!.setEdgeAttribute(edge, 'hidden', false);
+    } else {
+      state.graph!.setEdgeAttribute(edge, 'hidden', true);
+    }
+  });
+
+  state.sigma.refresh();
+
+  // Highlight nodes in package list
+  const allVisibleNodes = new Set([...cycleMemberColors.keys(), ...queried, ...intermediate]);
+  highlightPackagesInList(dom, allVisibleNodes);
+}
+
+/**
+ * Toggle cycle visibility
+ */
+export function toggleCycleVisibility(state: AppState, dom: DOMElements, cycleId: string): void {
+  if (!state.currentCycleScenario) return;
+
+  if (state.visibleCycles.has(cycleId)) {
+    state.visibleCycles.delete(cycleId);
+  } else {
+    state.visibleCycles.add(cycleId);
+  }
+
+  // Re-apply visualization
+  applyCycleVisualization(state, dom);
+
+  // Re-render cycles list
+  renderCyclesList(dom, state.currentCycleScenario.cycles, state.visibleCycles, (id) => {
+    toggleCycleVisibility(state, dom, id);
+  });
+
+  // Reinitialize particles for visible cycles
+  if (state.particleSystem) {
+    stopParticleAnimation(state);
+    state.particleSystem = initializeParticleSystem(state.currentCycleScenario, state.visibleCycles);
+    startParticleAnimation(state, dom);
+  }
+}
+
+/**
+ * Clear cycles mode
+ */
+export function clearCyclesMode(state: AppState, dom: DOMElements): void {
+  if (!state.graph || !state.sigma) return;
+
+  // Stop particle animation
+  if (state.particleSystem?.animationId) {
+    cancelAnimationFrame(state.particleSystem.animationId);
+  }
+  if (state.particleCanvas) {
+    state.particleCanvas.style.display = 'none';
+  }
+
+  // Reset state
+  state.isCyclesMode = false;
+  state.currentCycleScenario = null;
+  state.visibleCycles.clear();
+  state.particleSystem = null;
+
+  // Reset graph visuals
+  state.graph.forEachNode((node, attrs) => {
+    state.graph!.setNodeAttribute(node, 'color', attrs.originalColor);
+    state.graph!.setNodeAttribute(node, 'size', attrs.originalSize);
+    state.graph!.setNodeAttribute(node, 'hidden', false);
+  });
+
+  state.graph.forEachEdge((edge, attrs) => {
+    state.graph!.setEdgeAttribute(edge, 'color', attrs.originalColor);
+    state.graph!.setEdgeAttribute(edge, 'size', 0.5);
+    state.graph!.setEdgeAttribute(edge, 'hidden', false);
+  });
+
+  state.sigma.refresh();
+
+  // Clear UI
+  hideModeBadge(dom);
+  highlightPackagesInList(dom, new Set());
+  dom.cyclesList.innerHTML = '';
+}
+
+/**
  * Setup all event listeners
  */
 export function setupInteractions(
@@ -313,4 +547,14 @@ export function setupInteractions(
     dom.filterInput.value = '';
     clearSubgraphMode(state, dom);
   };
+
+  // Cycle buttons
+  dom.btnDetectCycles.onclick = () => detectCycles(state, dom);
+  dom.btnClearCycles.onclick = () => {
+    dom.cyclesInput.value = '';
+    clearCyclesMode(state, dom);
+  };
+
+  // Initialize tabs
+  initializeTabs(dom);
 }

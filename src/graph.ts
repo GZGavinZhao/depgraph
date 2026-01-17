@@ -8,10 +8,13 @@ export const COLORS: ColorPalette = {
   nodeHighlight: '#22d3ee',
   nodePath: '#fb923c',
   nodeDimmed: '#1e2830',
+  nodeQueried: '#3b82f6',
+  nodeIntermediate: '#a78bfa',
   edgeDefault: '#2d3748',
   edgeHighlight: '#22d3ee',
   edgePath: '#fb923c',
-  edgeDimmed: '#141a20'
+  edgeDimmed: '#141a20',
+  cyclePalette: ['#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#ec4899']
 };
 
 /**

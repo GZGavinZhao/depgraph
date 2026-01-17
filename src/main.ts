@@ -3,6 +3,7 @@ import { EdgeArrowProgram } from 'sigma/rendering';
 import { loadGraphData, createGraph, runForceLayout } from './graph';
 import { getDOMElements, showLoading, updateStats, renderPackageList } from './ui';
 import { setupInteractions, selectNode, focusOnNode } from './interactions';
+import { resizeParticleCanvas } from './particles';
 import type { AppState } from './types';
 import './styles.css';
 
@@ -13,7 +14,12 @@ const state: AppState = {
   allPackages: [],
   highlightedNodes: new Set(),
   selectedNode: null,
-  isSubgraphMode: false
+  isSubgraphMode: false,
+  isCyclesMode: false,
+  currentCycleScenario: null,
+  visibleCycles: new Set(),
+  particleSystem: null,
+  particleCanvas: null
 };
 
 /**
@@ -84,3 +90,11 @@ if (document.readyState === 'loading') {
 } else {
   initGraph();
 }
+
+// Handle window resize for particle canvas
+window.addEventListener('resize', () => {
+  if (state.particleCanvas) {
+    const dom = getDOMElements();
+    resizeParticleCanvas(state.particleCanvas, dom.sigmaContainer);
+  }
+});

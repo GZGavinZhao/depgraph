@@ -1,0 +1,90 @@
+{
+  "scenarios": [
+    {
+      "id": "simple-3-cycle",
+      "queriedPackages": ["glibc", "gcc", "binutils"],
+      "cycles": [
+        {
+          "id": "cycle-1",
+          "nodes": ["glibc", "gcc", "binutils"],
+          "edges": [
+            {"from": "glibc", "to": "gcc"},
+            {"from": "gcc", "to": "binutils"},
+            {"from": "binutils", "to": "glibc"}
+          ],
+          "color": "#f87171"
+        }
+      ],
+      "intermediateNodes": []
+    },
+    {
+      "id": "multiple-cycles",
+      "queriedPackages": ["python3", "perl", "ruby", "nodejs"],
+      "cycles": [
+        {
+          "id": "cycle-1",
+          "nodes": ["python3", "perl"],
+          "edges": [
+            {"from": "python3", "to": "perl"},
+            {"from": "perl", "to": "python3"}
+          ],
+          "color": "#f87171"
+        },
+        {
+          "id": "cycle-2",
+          "nodes": ["ruby", "nodejs"],
+          "edges": [
+            {"from": "ruby", "to": "nodejs"},
+            {"from": "nodejs", "to": "ruby"}
+          ],
+          "color": "#a78bfa"
+        }
+      ],
+      "intermediateNodes": []
+    },
+    {
+      "id": "overlapping-cycles",
+      "queriedPackages": ["systemd", "dbus", "udev", "polkit"],
+      "cycles": [
+        {
+          "id": "cycle-1",
+          "nodes": ["systemd", "dbus"],
+          "edges": [
+            {"from": "systemd", "to": "dbus"},
+            {"from": "dbus", "to": "systemd"}
+          ],
+          "color": "#f87171"
+        },
+        {
+          "id": "cycle-2",
+          "nodes": ["systemd", "udev", "polkit"],
+          "edges": [
+            {"from": "systemd", "to": "udev"},
+            {"from": "udev", "to": "polkit"},
+            {"from": "polkit", "to": "systemd"}
+          ],
+          "color": "#22d3ee"
+        }
+      ],
+      "intermediateNodes": []
+    },
+    {
+      "id": "cycle-with-intermediates",
+      "queriedPackages": ["mesa", "llvm"],
+      "cycles": [
+        {
+          "id": "cycle-1",
+          "nodes": ["mesa", "libdrm", "wayland", "llvm"],
+          "edges": [
+            {"from": "mesa", "to": "libdrm"},
+            {"from": "libdrm", "to": "wayland"},
+            {"from": "wayland", "to": "llvm"},
+            {"from": "llvm", "to": "mesa"}
+          ],
+          "color": "#f87171"
+        }
+      ],
+      "intermediateNodes": ["libdrm", "wayland"]
+    }
+  ]
+}
