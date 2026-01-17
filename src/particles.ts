@@ -1,31 +1,32 @@
 import type Sigma from 'sigma';
 import type Graph from 'graphology';
-import type { AppState, CycleScenario, ParticleSystem, Particle, NodeAttributes, EdgeAttributes } from './types';
+import type { AppState, CycleScenario, WaveSystem, Wave, NodeAttributes, EdgeAttributes } from './types';
 
-// Particle animation constants
-const PARTICLE_SPEED = 0.3; // Progress units per second
-const PARTICLES_PER_CYCLE = 3;
+// Wave animation constants
+const WAVE_SPEED = 0.8;         // Progress units per second (2.6x faster than old particles)
+const WAVE_SPREAD = 0.25;       // Gradient covers 25% of edge length
+const WAVES_PER_EDGE = 2;       // Number of waves per cycle edge
 
 /**
- * Setup particle canvas overlay
+ * Setup animation canvas overlay
  */
-export function setupParticleCanvas(sigmaContainer: HTMLElement): HTMLCanvasElement {
+export function setupAnimationCanvas(sigmaContainer: HTMLElement): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
-  canvas.id = 'particle-canvas';
+  canvas.id = 'particle-canvas';  // Keep ID for CSS compatibility
 
   // Insert canvas into sigma container
   sigmaContainer.appendChild(canvas);
 
   // Set canvas size to match container
-  resizeParticleCanvas(canvas, sigmaContainer);
+  resizeAnimationCanvas(canvas, sigmaContainer);
 
   return canvas;
 }
 
 /**
- * Resize particle canvas to match container
+ * Resize animation canvas to match container
  */
-export function resizeParticleCanvas(canvas: HTMLCanvasElement, container: HTMLElement): void {
+export function resizeAnimationCanvas(canvas: HTMLCanvasElement, container: HTMLElement): void {
   const rect = container.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
 
@@ -45,68 +46,69 @@ export function resizeParticleCanvas(canvas: HTMLCanvasElement, container: HTMLE
 }
 
 /**
- * Initialize particle system with particles for each visible cycle
+ * Initialize wave system with waves for each visible cycle edge
  */
-export function initializeParticleSystem(
+export function initializeWaveSystem(
   scenario: CycleScenario,
   visibleCycles: Set<string>
-): ParticleSystem {
-  const particles: Particle[] = [];
+): WaveSystem {
+  const waves: Wave[] = [];
 
   for (const cycle of scenario.cycles) {
     if (!visibleCycles.has(cycle.id)) continue;
 
-    // Create multiple particles per cycle, staggered
-    for (let i = 0; i < PARTICLES_PER_CYCLE; i++) {
-      particles.push({
-        cycleId: cycle.id,
-        edgeIndex: 0,
-        progress: i / PARTICLES_PER_CYCLE, // Stagger particles evenly
-        color: cycle.color
-      });
+    // Create multiple waves per edge
+    for (let edgeIndex = 0; edgeIndex < cycle.edges.length; edgeIndex++) {
+      for (let waveNum = 0; waveNum < WAVES_PER_EDGE; waveNum++) {
+        waves.push({
+          cycleId: cycle.id,
+          edgeIndex,
+          centerProgress: waveNum / WAVES_PER_EDGE, // Stagger waves evenly
+          color: cycle.color
+        });
+      }
     }
   }
 
   return {
-    particles,
+    waves,
     lastFrame: performance.now(),
     animationId: null
   };
 }
 
 /**
- * Update particle positions based on elapsed time
+ * Update wave positions based on elapsed time
  */
-export function updateParticles(
-  system: ParticleSystem,
+export function updateWaves(
+  system: WaveSystem,
   scenario: CycleScenario
 ): void {
   const now = performance.now();
   const delta = (now - system.lastFrame) / 1000; // Convert to seconds
   system.lastFrame = now;
 
-  for (const particle of system.particles) {
-    // Find the cycle for this particle
-    const cycle = scenario.cycles.find(c => c.id === particle.cycleId);
+  for (const wave of system.waves) {
+    // Find the cycle for this wave
+    const cycle = scenario.cycles.find(c => c.id === wave.cycleId);
     if (!cycle || cycle.edges.length === 0) continue;
 
-    // Advance particle progress
-    particle.progress += PARTICLE_SPEED * delta;
+    // Advance wave center position
+    wave.centerProgress += WAVE_SPEED * delta;
 
-    // Wrap to next edge when progress >= 1
-    while (particle.progress >= 1) {
-      particle.progress -= 1;
-      particle.edgeIndex = (particle.edgeIndex + 1) % cycle.edges.length;
+    // Wrap around when wave reaches end of edge
+    if (wave.centerProgress > 1 + WAVE_SPREAD / 2) {
+      wave.centerProgress = -WAVE_SPREAD / 2;
     }
   }
 }
 
 /**
- * Render particles on canvas
+ * Render waves on canvas
  */
-export function renderParticles(
+export function renderWaves(
   canvas: HTMLCanvasElement,
-  system: ParticleSystem,
+  system: WaveSystem,
   scenario: CycleScenario,
   graph: Graph<NodeAttributes, EdgeAttributes>,
   sigma: Sigma<NodeAttributes, EdgeAttributes>
@@ -119,14 +121,14 @@ export function renderParticles(
   // Clear canvas
   ctx.clearRect(0, 0, rect.width, rect.height);
 
-  // Render each particle
-  for (const particle of system.particles) {
-    // Find the cycle for this particle
-    const cycle = scenario.cycles.find(c => c.id === particle.cycleId);
+  // Render each wave
+  for (const wave of system.waves) {
+    // Find the cycle for this wave
+    const cycle = scenario.cycles.find(c => c.id === wave.cycleId);
     if (!cycle || cycle.edges.length === 0) continue;
 
     // Get current edge
-    const edge = cycle.edges[particle.edgeIndex];
+    const edge = cycle.edges[wave.edgeIndex];
     if (!edge) continue;
 
     // Get node positions
@@ -137,67 +139,82 @@ export function renderParticles(
     const toX = graph.getNodeAttribute(edge.to, 'x');
     const toY = graph.getNodeAttribute(edge.to, 'y');
 
-    // Interpolate position along edge
-    const graphX = fromX + (toX - fromX) * particle.progress;
-    const graphY = fromY + (toY - fromY) * particle.progress;
+    // Calculate wave bounds
+    const startProgress = Math.max(0, wave.centerProgress - WAVE_SPREAD / 2);
+    const endProgress = Math.min(1, wave.centerProgress + WAVE_SPREAD / 2);
+
+    // Skip if wave is completely out of bounds
+    if (endProgress <= 0 || startProgress >= 1) continue;
+
+    // Interpolate start and end positions along edge
+    const startGraphX = fromX + (toX - fromX) * startProgress;
+    const startGraphY = fromY + (toY - fromY) * startProgress;
+    const endGraphX = fromX + (toX - fromX) * endProgress;
+    const endGraphY = fromY + (toY - fromY) * endProgress;
 
     // Transform to viewport coordinates
-    const viewportPos = sigma.graphToViewport({ x: graphX, y: graphY });
+    const startViewport = sigma.graphToViewport({ x: startGraphX, y: startGraphY });
+    const endViewport = sigma.graphToViewport({ x: endGraphX, y: endGraphY });
 
-    // Draw particle with glow effect
-    const particleRadius = 4;
-
-    // Outer glow
-    ctx.beginPath();
-    const gradient = ctx.createRadialGradient(
-      viewportPos.x, viewportPos.y, 0,
-      viewportPos.x, viewportPos.y, particleRadius * 3
+    // Create linear gradient from wave start to end
+    const gradient = ctx.createLinearGradient(
+      startViewport.x, startViewport.y,
+      endViewport.x, endViewport.y
     );
-    gradient.addColorStop(0, particle.color + 'aa'); // Semi-transparent
-    gradient.addColorStop(0.5, particle.color + '44');
-    gradient.addColorStop(1, particle.color + '00'); // Fully transparent
-    ctx.fillStyle = gradient;
-    ctx.arc(viewportPos.x, viewportPos.y, particleRadius * 3, 0, Math.PI * 2);
-    ctx.fill();
 
-    // Inner solid particle
-    ctx.beginPath();
-    ctx.fillStyle = particle.color;
-    ctx.arc(viewportPos.x, viewportPos.y, particleRadius, 0, Math.PI * 2);
-    ctx.fill();
+    // Gradient color stops (creates pulse effect)
+    gradient.addColorStop(0, wave.color + '00');    // Transparent
+    gradient.addColorStop(0.5, wave.color + 'ff');  // Full opacity at center
+    gradient.addColorStop(1, wave.color + '00');    // Transparent
 
-    // Bright center
+    // Draw thick line with gradient
+    ctx.save();
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = wave.color;
+
     ctx.beginPath();
-    ctx.fillStyle = '#ffffff';
-    ctx.arc(viewportPos.x, viewportPos.y, particleRadius * 0.4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(startViewport.x, startViewport.y);
+    ctx.lineTo(endViewport.x, endViewport.y);
+    ctx.stroke();
+
+    ctx.restore();
   }
 }
 
 /**
- * Start particle animation loop
+ * Start wave animation loop
  */
-export function startParticleAnimation(state: AppState, dom: { sigmaContainer: HTMLElement }): void {
-  if (!state.particleSystem || !state.currentCycleScenario || !state.graph || !state.sigma || !state.particleCanvas) return;
+export function startWaveAnimation(state: AppState, dom: { sigmaContainer: HTMLElement }): void {
+  if (!state.waveSystem || !state.currentCycleScenario || !state.graph || !state.sigma || !state.animationCanvas) return;
 
   const animate = () => {
-    if (!state.particleSystem || !state.currentCycleScenario || !state.graph || !state.sigma || !state.particleCanvas) return;
+    if (!state.waveSystem || !state.currentCycleScenario || !state.graph || !state.sigma || !state.animationCanvas) return;
 
-    updateParticles(state.particleSystem, state.currentCycleScenario);
-    renderParticles(state.particleCanvas, state.particleSystem, state.currentCycleScenario, state.graph, state.sigma);
+    updateWaves(state.waveSystem, state.currentCycleScenario);
+    renderWaves(state.animationCanvas, state.waveSystem, state.currentCycleScenario, state.graph, state.sigma);
 
-    state.particleSystem.animationId = requestAnimationFrame(animate);
+    state.waveSystem.animationId = requestAnimationFrame(animate);
   };
 
   animate();
 }
 
 /**
- * Stop particle animation
+ * Stop wave animation
  */
-export function stopParticleAnimation(state: AppState): void {
-  if (state.particleSystem?.animationId) {
-    cancelAnimationFrame(state.particleSystem.animationId);
-    state.particleSystem.animationId = null;
+export function stopWaveAnimation(state: AppState): void {
+  if (state.waveSystem?.animationId) {
+    cancelAnimationFrame(state.waveSystem.animationId);
+    state.waveSystem.animationId = null;
   }
 }
+
+// Legacy exports for backward compatibility (will be updated in other files)
+export const setupParticleCanvas = setupAnimationCanvas;
+export const resizeParticleCanvas = resizeAnimationCanvas;
+export const initializeParticleSystem = initializeWaveSystem;
+export const startParticleAnimation = startWaveAnimation;
+export const stopParticleAnimation = stopWaveAnimation;

@@ -53,16 +53,16 @@ export interface CyclesData {
   scenarios: CycleScenario[];
 }
 
-// Particle animation structures
-export interface Particle {
+// Wave animation structures
+export interface Wave {
   cycleId: string;
   edgeIndex: number;
-  progress: number;
+  centerProgress: number;  // 0-1 position along edge
   color: string;
 }
 
-export interface ParticleSystem {
-  particles: Particle[];
+export interface WaveSystem {
+  waves: Wave[];
   lastFrame: number;
   animationId: number | null;
 }
@@ -78,8 +78,8 @@ export interface AppState {
   isCyclesMode: boolean;
   currentCycleScenario: CycleScenario | null;
   visibleCycles: Set<string>;
-  particleSystem: ParticleSystem | null;
-  particleCanvas: HTMLCanvasElement | null;
+  waveSystem: WaveSystem | null;
+  animationCanvas: HTMLCanvasElement | null;
 }
 
 // Color palette

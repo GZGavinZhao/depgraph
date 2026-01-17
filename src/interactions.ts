@@ -308,12 +308,12 @@ export async function detectCycles(state: AppState, dom: DOMElements): Promise<v
   // Show mode badge
   showCyclesModeBadge(dom, scenario.queriedPackages.length, scenario.cycles.length);
 
-  // Initialize and start particle animation
-  if (!state.particleCanvas) {
-    state.particleCanvas = setupParticleCanvas(dom.sigmaContainer);
+  // Initialize and start wave animation
+  if (!state.animationCanvas) {
+    state.animationCanvas = setupParticleCanvas(dom.sigmaContainer);
   }
-  state.particleCanvas.style.display = 'block';
-  state.particleSystem = initializeParticleSystem(scenario, state.visibleCycles);
+  state.animationCanvas.style.display = 'block';
+  state.waveSystem = initializeParticleSystem(scenario, state.visibleCycles);
   startParticleAnimation(state, dom);
 }
 
@@ -426,10 +426,10 @@ export function toggleCycleVisibility(state: AppState, dom: DOMElements, cycleId
     toggleCycleVisibility(state, dom, id);
   });
 
-  // Reinitialize particles for visible cycles
-  if (state.particleSystem) {
+  // Reinitialize waves for visible cycles
+  if (state.waveSystem) {
     stopParticleAnimation(state);
-    state.particleSystem = initializeParticleSystem(state.currentCycleScenario, state.visibleCycles);
+    state.waveSystem = initializeParticleSystem(state.currentCycleScenario, state.visibleCycles);
     startParticleAnimation(state, dom);
   }
 }
@@ -440,19 +440,19 @@ export function toggleCycleVisibility(state: AppState, dom: DOMElements, cycleId
 export function clearCyclesMode(state: AppState, dom: DOMElements): void {
   if (!state.graph || !state.sigma) return;
 
-  // Stop particle animation
-  if (state.particleSystem?.animationId) {
-    cancelAnimationFrame(state.particleSystem.animationId);
+  // Stop wave animation
+  if (state.waveSystem?.animationId) {
+    cancelAnimationFrame(state.waveSystem.animationId);
   }
-  if (state.particleCanvas) {
-    state.particleCanvas.style.display = 'none';
+  if (state.animationCanvas) {
+    state.animationCanvas.style.display = 'none';
   }
 
   // Reset state
   state.isCyclesMode = false;
   state.currentCycleScenario = null;
   state.visibleCycles.clear();
-  state.particleSystem = null;
+  state.waveSystem = null;
 
   // Reset graph visuals
   state.graph.forEachNode((node, attrs) => {

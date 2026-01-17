@@ -18,8 +18,8 @@ const state: AppState = {
   isCyclesMode: false,
   currentCycleScenario: null,
   visibleCycles: new Set(),
-  particleSystem: null,
-  particleCanvas: null
+  waveSystem: null,
+  animationCanvas: null
 };
 
 /**
@@ -91,10 +91,10 @@ if (document.readyState === 'loading') {
   initGraph();
 }
 
-// Handle window resize for particle canvas
+// Handle window resize for animation canvas
 window.addEventListener('resize', () => {
-  if (state.particleCanvas) {
+  if (state.animationCanvas) {
     const dom = getDOMElements();
-    resizeParticleCanvas(state.particleCanvas, dom.sigmaContainer);
+    resizeParticleCanvas(state.animationCanvas, dom.sigmaContainer);
   }
 });

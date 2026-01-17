@@ -19,23 +19,23 @@
     },
     {
       "id": "multiple-cycles",
-      "queriedPackages": ["python3", "perl", "ruby", "nodejs"],
+      "queriedPackages": ["perl", "nodejs", "glib2", "dbus"],
       "cycles": [
         {
           "id": "cycle-1",
-          "nodes": ["python3", "perl"],
+          "nodes": ["perl", "nodejs"],
           "edges": [
-            {"from": "python3", "to": "perl"},
-            {"from": "perl", "to": "python3"}
+            {"from": "perl", "to": "nodejs"},
+            {"from": "nodejs", "to": "perl"}
           ],
           "color": "#f87171"
         },
         {
           "id": "cycle-2",
-          "nodes": ["ruby", "nodejs"],
+          "nodes": ["glib2", "dbus"],
           "edges": [
-            {"from": "ruby", "to": "nodejs"},
-            {"from": "nodejs", "to": "ruby"}
+            {"from": "glib2", "to": "dbus"},
+            {"from": "dbus", "to": "glib2"}
           ],
           "color": "#a78bfa"
         }
@@ -44,24 +44,24 @@
     },
     {
       "id": "overlapping-cycles",
-      "queriedPackages": ["systemd", "dbus", "udev", "polkit"],
+      "queriedPackages": ["llvm", "gcc", "binutils", "glibc"],
       "cycles": [
         {
           "id": "cycle-1",
-          "nodes": ["systemd", "dbus"],
+          "nodes": ["llvm", "gcc"],
           "edges": [
-            {"from": "systemd", "to": "dbus"},
-            {"from": "dbus", "to": "systemd"}
+            {"from": "llvm", "to": "gcc"},
+            {"from": "gcc", "to": "llvm"}
           ],
           "color": "#f87171"
         },
         {
           "id": "cycle-2",
-          "nodes": ["systemd", "udev", "polkit"],
+          "nodes": ["gcc", "binutils", "glibc"],
           "edges": [
-            {"from": "systemd", "to": "udev"},
-            {"from": "udev", "to": "polkit"},
-            {"from": "polkit", "to": "systemd"}
+            {"from": "gcc", "to": "binutils"},
+            {"from": "binutils", "to": "glibc"},
+            {"from": "glibc", "to": "gcc"}
           ],
           "color": "#22d3ee"
         }
@@ -69,22 +69,53 @@
       "intermediateNodes": []
     },
     {
-      "id": "cycle-with-intermediates",
-      "queriedPackages": ["mesa", "llvm"],
+      "id": "real-autobuild-cycle",
+      "queriedPackages": ["texlive", "qt6-base", "postgresql", "harfbuzz"],
       "cycles": [
         {
           "id": "cycle-1",
-          "nodes": ["mesa", "libdrm", "wayland", "llvm"],
+          "nodes": [
+            "texlive", "libunwind", "sysprof", "libwebkit-gtk", "devhelp",
+            "tinysparql", "libgtk-4", "ibus", "sdl2", "qrencode", "systemd",
+            "util-linux", "openldap", "httpd", "tcl", "python3", "pyyaml",
+            "python-myst-parser", "llvm", "zlib-ng", "freetype2", "harfbuzz",
+            "qt6-base", "postgresql"
+          ],
           "edges": [
-            {"from": "mesa", "to": "libdrm"},
-            {"from": "libdrm", "to": "wayland"},
-            {"from": "wayland", "to": "llvm"},
-            {"from": "llvm", "to": "mesa"}
+            {"from": "texlive", "to": "libunwind"},
+            {"from": "libunwind", "to": "sysprof"},
+            {"from": "sysprof", "to": "libwebkit-gtk"},
+            {"from": "libwebkit-gtk", "to": "devhelp"},
+            {"from": "devhelp", "to": "tinysparql"},
+            {"from": "tinysparql", "to": "libgtk-4"},
+            {"from": "libgtk-4", "to": "ibus"},
+            {"from": "ibus", "to": "sdl2"},
+            {"from": "sdl2", "to": "qrencode"},
+            {"from": "qrencode", "to": "systemd"},
+            {"from": "systemd", "to": "util-linux"},
+            {"from": "util-linux", "to": "openldap"},
+            {"from": "openldap", "to": "httpd"},
+            {"from": "httpd", "to": "tcl"},
+            {"from": "tcl", "to": "python3"},
+            {"from": "python3", "to": "pyyaml"},
+            {"from": "pyyaml", "to": "python-myst-parser"},
+            {"from": "python-myst-parser", "to": "llvm"},
+            {"from": "llvm", "to": "zlib-ng"},
+            {"from": "zlib-ng", "to": "freetype2"},
+            {"from": "freetype2", "to": "harfbuzz"},
+            {"from": "harfbuzz", "to": "qt6-base"},
+            {"from": "qt6-base", "to": "postgresql"},
+            {"from": "postgresql", "to": "texlive"}
           ],
           "color": "#f87171"
         }
       ],
-      "intermediateNodes": ["libdrm", "wayland"]
+      "intermediateNodes": [
+        "libunwind", "sysprof", "libwebkit-gtk", "devhelp", "tinysparql",
+        "libgtk-4", "ibus", "sdl2", "qrencode", "systemd", "util-linux",
+        "openldap", "httpd", "tcl", "python3", "pyyaml", "python-myst-parser",
+        "llvm", "zlib-ng", "freetype2"
+      ]
     }
   ]
 }
